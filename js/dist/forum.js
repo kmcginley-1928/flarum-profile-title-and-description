@@ -1,13 +1,21 @@
 /*!
  * kmcginley-1928/flarum-profile-title-and-description
- * Forum JS: plain IIFE, no exports. Plays nice with trimmed/Asirem builds.
+ * Forum JS: UMD-lite wrapper so Flarum always sees a module object.
  */
-(function () {
+(function (root, factory) {
+  // CommonJS (Flarum’s loader): export an object
+  if (typeof module === 'object' && module.exports) {
+    module.exports = factory();
+  } else {
+    // Plain browser: just run; return value is ignored
+    factory();
+  }
+}(typeof self !== 'undefined' ? self : this, function () {
   'use strict';
 
   var EXT_ID = 'kmcginley-1928-profile-title-and-description';
 
-  // Optional belt-and-braces: ensure a value exists (the head guard already keeps it stable)
+  // Safety net: ensure a benign object exists on the global map too
   try {
     var w = window;
     w.flarum = w.flarum || {};
@@ -15,17 +23,14 @@
     if (w.flarum.extensions[EXT_ID] == null) {
       w.flarum.extensions[EXT_ID] = {};
     }
-  } catch (e) {
-    // ignore
-  }
+  } catch (e) {}
 
-  // ---------------- Utilities ----------------
+  // ---------------- Utilities (defensive) ----------------
   function getMeta(name) {
     try {
       var el = document.querySelector('meta[name="' + name + '"]');
       return el ? el.getAttribute('content') : null;
-    } catch (_) {}
-    return null;
+    } catch (_) { return null; }
   }
 
   function getCsrfToken() {
@@ -41,25 +46,13 @@
     try {
       var m = window.location.pathname.match(/\/u\/([^/?#]+)/i);
       return m ? decodeURIComponent(m[1]) : null;
-    } catch (_) {}
-    return null;
+    } catch (_) { return null; }
   }
 
-  function isOnUserProfilePage() {
-    return !!currentProfileSlug();
-  }
-
-  function oncePerPageRunKey() {
-    return 'kmcginley1928-ptad-btn';
-  }
-
-  function alreadyInjected() {
-    return !!document.getElementById(oncePerPageRunKey());
-  }
-
-  function markInjected(btn) {
-    btn.id = oncePerPageRunKey();
-  }
+  function isOnUserProfilePage() { return !!currentProfileSlug(); }
+  function oncePerPageRunKey() { return 'kmcginley1928-ptad-btn'; }
+  function alreadyInjected() { return !!document.getElementById(oncePerPageRunKey()); }
+  function markInjected(btn) { btn.id = oncePerPageRunKey(); }
 
   async function fetchUserRecordBySlug(slug) {
     try {
@@ -71,8 +64,7 @@
       });
       if (!res.ok) return null;
       return await res.json();
-    } catch (_) {}
-    return null;
+    } catch (_) { return null; }
   }
 
   async function patchUser(id, payload, csrf) {
@@ -238,4 +230,7 @@
       setupMutationObserver();
     }
   }
-})();
+
+  // Return a harmless object so the loader never writes `undefined`
+  return { extend: [] };
+}));
