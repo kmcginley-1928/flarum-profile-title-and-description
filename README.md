@@ -1,4 +1,4 @@
-# Profile Title & Description (Flarum extension)
+# Profile Title & Description (Flarum extension) v5.5
 
 Adds two profile fields to users:
 
