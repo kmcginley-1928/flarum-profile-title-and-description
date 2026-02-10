@@ -1,19 +1,28 @@
 /*!
  * kmcginley-1928/flarum-profile-title-and-description
- * Forum JS - fully defensive, safe on trimmed/Asirem-style builds.
- *
- * Behaviour:
- *  - If Flarum compat/app modules exist, register a light initializer that relies on DOM.
- *  - Otherwise, fall back to pure DOM injection without touching compat.
- *  - Provides a single "Edit profile info" button on user profile pages.
- *  - Uses prompt() for title and short_description.
- *  - PATCHes /api/users/:id (with CSRF token if available) and reloads on success.
+ * Forum JS - defensively registers an empty extension object to avoid bootErrors.
  */
-
 (function () {
   'use strict';
 
-  // ------------- Utilities (defensive) ----------------
+  // ---- Critical: ensure an object exists at flarum.extensions[EXT_ID] ----
+  var EXT_ID = 'kmcginley-1928-profile-title-and-description';
+  try {
+    // Ensure globals exist
+    var _w = typeof window !== 'undefined' ? window : {};
+    _w.flarum = _w.flarum || {};
+    _w.flarum.extensions = _w.flarum.extensions || {};
+
+    // If nothing is registered yet, register a benign object so
+    // Application.bootExtensions won't read properties from undefined.
+    if (typeof _w.flarum.extensions[EXT_ID] === 'undefined') {
+      _w.flarum.extensions[EXT_ID] = {};
+    }
+  } catch (_) {
+    // Even if this fails, the rest of the script still uses DOM fallback
+  }
+
+  // ---------------- Utilities (defensive) ----------------
 
   function getMeta(name) {
     try {
@@ -30,7 +39,6 @@
         return window.app.session.csrfToken;
       }
     } catch (_) {}
-    // try common meta names
     return getMeta('csrf-token') || getMeta('csrf') || null;
   }
 
@@ -65,9 +73,7 @@
       var res = await fetch('/api/users/' + encodeURIComponent(slug), {
         method: 'GET',
         credentials: 'same-origin',
-        headers: {
-          'Accept': 'application/vnd.api+json'
-        }
+        headers: { 'Accept': 'application/vnd.api+json' }
       });
       if (!res.ok) return null;
       return await res.json();
@@ -84,28 +90,20 @@
       };
       if (csrf) headers['X-CSRF-Token'] = csrf;
 
-      var res = await fetch('/api/users/' + encodeURIComponent(String(id)), {
+      return await fetch('/api/users/' + encodeURIComponent(String(id)), {
         method: 'PATCH',
         credentials: 'same-origin',
         headers: headers,
         body: JSON.stringify({
-          data: {
-            type: 'users',
-            id: String(id),
-            attributes: payload
-          }
+          data: { type: 'users', id: String(id), attributes: payload }
         })
       });
-
-      return res;
     } catch (e) {
       return { ok: false, status: 0, error: e };
     }
   }
 
-  // Try to find a reasonable DOM container to place the button into.
   function findProfileHeaderContainer() {
-    // Common Flarum selectors (default + popular themes)
     var candidates = [
       '.UserHero .container',
       '.UserHero',
@@ -154,11 +152,8 @@
   function injectButtonIntoHeader() {
     var container = findProfileHeaderContainer();
     if (!container) return injectFixedButton();
-
     var btn = createButton();
     markInjected(btn);
-
-    // Append to right if possible, otherwise just append.
     container.appendChild(btn);
     return btn;
   }
@@ -173,12 +168,11 @@
     var id = user.data.id;
     var attrs = user.data.attributes || {};
 
-    // Prefill existing values if present
     var currentTitle = (attrs.title || '').toString();
     var currentShort = (attrs.short_description || '').toString();
 
     var newTitle = window.prompt('Profile title (max 250 characters):', currentTitle);
-    if (newTitle === null) return; // cancelled
+    if (newTitle === null) return;
     newTitle = (newTitle || '').trim();
     if (newTitle.length > 250) {
       alert('Title must be 250 characters or fewer.');
@@ -186,14 +180,13 @@
     }
 
     var newShort = window.prompt('Short description:', currentShort);
-    if (newShort === null) return; // cancelled
+    if (newShort === null) return;
     newShort = (newShort || '').trim();
 
     var csrf = getCsrfToken();
     var res = await patchUser(id, { title: newTitle, short_description: newShort }, csrf);
 
     if (res && res.ok) {
-      // Refresh to reflect changes
       window.location.reload();
     } else {
       var msg = 'Saving failed';
@@ -207,34 +200,26 @@
 
   function ensureButton() {
     if (!isOnUserProfilePage() || alreadyInjected()) return;
-
     var btn = injectButtonIntoHeader();
     btn.addEventListener('click', handleEditClick);
   }
 
-  // Observe DOM changes to reinject on SPA navigations/redraws.
   function setupMutationObserver() {
-    var obs;
     try {
-      obs = new MutationObserver(function (_mutations) {
-        ensureButton();
-      });
+      var obs = new MutationObserver(function () { ensureButton(); });
       obs.observe(document.documentElement || document.body, { childList: true, subtree: true });
     } catch (_) {}
   }
 
-  // ------------- Safe initialisation paths ----------------
-
-  function frontendInitWithAppIfAvailable() {
+  // Prefer app initializer if available, but keep DOM fallback
+  function initWithAppIfAvailable() {
     try {
-      // Only reference compat if it exists. Do NOT read any property from undefined.
       var hasCompat = !!(window.flarum && window.flarum.core && window.flarum.core.compat);
       var appModule = hasCompat ? (window.flarum.core.compat['forum/app'] || null) : null;
       var app = appModule || (window.app || null);
 
       if (app && app.initializers && typeof app.initializers.add === 'function') {
-        app.initializers.add('kmcginley-1928-profile-title-and-description', function () {
-          // Keep it DOM-based even when app exists, to avoid depending on extend/mithril on trimmed builds.
+        app.initializers.add(EXT_ID, function () {
           if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', function () {
               ensureButton();
@@ -247,13 +232,11 @@
         });
         return true;
       }
-    } catch (_) {
-      // swallow and fall back
-    }
+    } catch (_) {}
     return false;
   }
 
-  function fallbackInitWithoutApp() {
+  if (!initWithAppIfAvailable()) {
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', function () {
         ensureButton();
@@ -263,10 +246,5 @@
       ensureButton();
       setupMutationObserver();
     }
-  }
-
-  // Try app path first, then fallback. Both are fully defensive.
-  if (!frontendInitWithAppIfAvailable()) {
-    fallbackInitWithoutApp();
   }
 })();
