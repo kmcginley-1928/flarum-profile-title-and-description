@@ -2,24 +2,21 @@
  * kmcginley-1928/flarum-profile-title-and-description
  * Forum JS - defensively registers an empty extension object to avoid bootErrors.
  */
+
 (function () {
   'use strict';
-
-  // ---- Critical: ensure an object exists at flarum.extensions[EXT_ID] ----
   var EXT_ID = 'kmcginley-1928-profile-title-and-description';
   try {
-    // Ensure globals exist
     var _w = typeof window !== 'undefined' ? window : {};
     _w.flarum = _w.flarum || {};
     _w.flarum.extensions = _w.flarum.extensions || {};
-
-    // If nothing is registered yet, register a benign object so
-    // Application.bootExtensions won't read properties from undefined.
     if (typeof _w.flarum.extensions[EXT_ID] === 'undefined') {
       _w.flarum.extensions[EXT_ID] = {};
     }
   } catch (_) {
+    // ... rest of script (button injection, prompts, PATCH) ...
     // Even if this fails, the rest of the script still uses DOM fallback
+    console.log("Forum.js failed add EXT_ID");
   }
 
   // ---------------- Utilities (defensive) ----------------
