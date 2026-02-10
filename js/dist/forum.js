@@ -1,23 +1,27 @@
 /*!
  * kmcginley-1928/flarum-profile-title-and-description
- * Forum JS - defensively registers an empty extension object to avoid bootErrors.
+ * Forum JS: exports a default object so Flarum never sees undefined.
  */
 
+// ---- Ensure the module has a default export (Flarum reads module.default) ----
+const __kmc_ext_default__ = {};
+export default __kmc_ext_default__;
+
+// Keep a benign runtime object on the global for maximum compatibility too
 (function () {
   'use strict';
+
   var EXT_ID = 'kmcginley-1928-profile-title-and-description';
+
+  // Also seed the global map early (belt and braces)
   try {
     var _w = typeof window !== 'undefined' ? window : {};
     _w.flarum = _w.flarum || {};
     _w.flarum.extensions = _w.flarum.extensions || {};
     if (typeof _w.flarum.extensions[EXT_ID] === 'undefined') {
-      _w.flarum.extensions[EXT_ID] = {};
+      _w.flarum.extensions[EXT_ID] = __kmc_ext_default__;
     }
-  } catch (_) {
-    // ... rest of script (button injection, prompts, PATCH) ...
-    // Even if this fails, the rest of the script still uses DOM fallback
-    console.log("Forum.js failed add EXT_ID");
-  }
+  } catch (_) {}
 
   // ---------------- Utilities (defensive) ----------------
 
@@ -208,13 +212,11 @@
     } catch (_) {}
   }
 
-  // Prefer app initializer if available, but keep DOM fallback
   function initWithAppIfAvailable() {
     try {
       var hasCompat = !!(window.flarum && window.flarum.core && window.flarum.core.compat);
       var appModule = hasCompat ? (window.flarum.core.compat['forum/app'] || null) : null;
       var app = appModule || (window.app || null);
-
       if (app && app.initializers && typeof app.initializers.add === 'function') {
         app.initializers.add(EXT_ID, function () {
           if (document.readyState === 'loading') {
