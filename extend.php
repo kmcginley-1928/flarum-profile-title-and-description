@@ -1,29 +1,29 @@
 <?php
 
+namespace Kmcginley1928\ProfileTitleAndDescription;
+
 use Flarum\Extend;
-use Flarum\User\Event\Saving;
+use Flarum\Api\Serializer\UserSerializer;
+use Flarum\User\Event\Saving as UserSaving;
 use Kmcginley1928\ProfileTitleAndDescription\Listeners\SaveProfileExtras;
 
-$extenders = [
+return [
+    // Provide the forum JS (defensive, will not crash if compat modules are missing)
+    (new Extend\Frontend('forum'))
+        ->js(__DIR__ . '/js/dist/forum.js'),
+
     // Locales
     (new Extend\Locales(__DIR__ . '/locale')),
 
-    // Forum JS (compiled, no build step needed)
-    (new Extend\Frontend('forum'))->js(__DIR__ . '/js/dist/forum.js'),
-
-    // Add fields to User API payload
-    (new Extend\ApiSerializer(\Flarum\Api\Serializer\UserSerializer::class))
-        ->attributes(function ($model, $serializer, array $attributes) {
-            $attributes['title'] = $model->title;
-            $attributes['short_description'] = $model->short_description;
+    // Expose the attributes on the user serializer
+    (new Extend\ApiSerializer(UserSerializer::class))
+        ->attributes(function (UserSerializer $serializer, $user, array $attributes) {
+            $attributes['title'] = $user->getAttribute('title');
+            $attributes['short_description'] = $user->getAttribute('short_description');
             return $attributes;
         }),
+
+    // Guarded save listener (self or moderator/admin), with validation
+    (new Extend\Event())
+        ->listen(UserSaving::class, SaveProfileExtras::class),
 ];
-
-// Guard the listener to avoid boot errors if autoload changes
-if (class_exists('Kmcginley1928\\ProfileTitleAndDescription\\Listeners\\SaveProfileExtras')) {
-    $extenders[] = (new Extend\Event())
-        ->listen(Saving::class, 'Kmcginley1928\\ProfileTitleAndDescription\\Listeners\\SaveProfileExtras');
-}
-
-return $extenders;

@@ -1,11 +1,8 @@
-kmc-profile-extras:
+kmcginley1928-profile-title-and-description:
   forum:
-    edit_button: "Edit profile info"
-    modal:
-      title: "Edit profile info"
-      field_title: "Title"
-      field_short_description: "Short description"
-      save: "Save changes"
-      saving: "Saving..."
-    card:
-      title_prefix: ""
+    edit_profile_info_button: Edit profile info
+    prompts:
+      title: "Profile title (max 250 characters):"
+      short_description: "Short description:"
+    validation:
+      title_too_long: "Title must be 250 characters or fewer."
