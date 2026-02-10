@@ -1,0 +1,11 @@
+kmc-profile-extras:
+  forum:
+    edit_button: "Edit profile info"
+    modal:
+      title: "Edit profile info"
+      field_title: "Title"
+      field_short_description: "Short description"
+      save: "Save changes"
+      saving: "Saving..."
+    card:
+      title_prefix: ""

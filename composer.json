@@ -1,0 +1,24 @@
+{
+  "name": "kmcginley-1928/flarum-profile-title-and-description",
+  "description": "Adds user title (max 250 chars) and short description to profiles. No migrations. Uses existing columns in he_users.",
+  "type": "flarum-extension",
+  "license": "MIT",
+  "require": {
+    "flarum/core": "^1.8"
+  },
+  "autoload": {
+    "psr-4": {
+      "Kmcginley1928\\ProfileTitleAndDescription\\": "src/"
+    }
+  },
+  "extra": {
+    "flarum-extension": {
+      "title": "Profile Title and Description",
+      "icon": {
+        "name": "fas fa-id-card",
+        "backgroundColor": "#21409A",
+        "color": "#ffffff"
+      }
+    }
+  }
+}
