@@ -1,37 +1,31 @@
 /*!
  * kmcginley-1928/flarum-profile-title-and-description
- * Forum JS: exports a default object so Flarum never sees undefined.
+ * Forum JS: plain IIFE, no exports. Plays nice with trimmed/Asirem builds.
  */
-
-// ---- Ensure the module has a default export (Flarum reads module.default) ----
-const __kmc_ext_default__ = {};
-export default __kmc_ext_default__;
-
-// Keep a benign runtime object on the global for maximum compatibility too
 (function () {
   'use strict';
 
   var EXT_ID = 'kmcginley-1928-profile-title-and-description';
 
-  // Also seed the global map early (belt and braces)
+  // Optional belt-and-braces: ensure a value exists (the head guard already keeps it stable)
   try {
-    var _w = typeof window !== 'undefined' ? window : {};
-    _w.flarum = _w.flarum || {};
-    _w.flarum.extensions = _w.flarum.extensions || {};
-    if (typeof _w.flarum.extensions[EXT_ID] === 'undefined') {
-      _w.flarum.extensions[EXT_ID] = __kmc_ext_default__;
+    var w = window;
+    w.flarum = w.flarum || {};
+    w.flarum.extensions = w.flarum.extensions || {};
+    if (w.flarum.extensions[EXT_ID] == null) {
+      w.flarum.extensions[EXT_ID] = {};
     }
-  } catch (_) {}
+  } catch (e) {
+    // ignore
+  }
 
-  // ---------------- Utilities (defensive) ----------------
-
+  // ---------------- Utilities ----------------
   function getMeta(name) {
     try {
       var el = document.querySelector('meta[name="' + name + '"]');
       return el ? el.getAttribute('content') : null;
-    } catch (_) {
-      return null;
-    }
+    } catch (_) {}
+    return null;
   }
 
   function getCsrfToken() {
@@ -47,9 +41,8 @@ export default __kmc_ext_default__;
     try {
       var m = window.location.pathname.match(/\/u\/([^/?#]+)/i);
       return m ? decodeURIComponent(m[1]) : null;
-    } catch (_) {
-      return null;
-    }
+    } catch (_) {}
+    return null;
   }
 
   function isOnUserProfilePage() {
@@ -78,9 +71,8 @@ export default __kmc_ext_default__;
       });
       if (!res.ok) return null;
       return await res.json();
-    } catch (_) {
-      return null;
-    }
+    } catch (_) {}
+    return null;
   }
 
   async function patchUser(id, payload, csrf) {
