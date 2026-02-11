@@ -49,13 +49,32 @@
     return btn;
   }
 
-  async function fetchUserBySlug(slug) {
-    try {
-      var r = await fetch('/api/users/' + encodeURIComponent(slug), { headers: { 'Accept': 'application/vnd.api+json' }, credentials: 'same-origin' });
-      if (!r.ok) return null;
-      return await r.json();
-    } catch (_) { return null; }
+// Finds the user by slug/username via search, returns the resource object { id, attributes, ... }
+async function fetchUserBySlug(slug) {
+  try {
+    if (!slug) return null;
+
+    const res = await fetch(
+      `/api/users?filter[q]=${encodeURIComponent(slug)}&page[limit]=1`,
+      {
+        method: 'GET',
+        credentials: 'same-origin',
+        headers: { Accept: 'application/vnd.api+json' },
+      }
+    );
+
+    if (!res.ok) return null;
+
+    const json = await res.json();
+    const data = Array.isArray(json && json.data) ? json.data : [];
+
+    // Prefer exact slug match if available, else take first match
+    const exact = data.find(u => u?.attributes?.slug === slug);
+    return exact || data[0] || null; // { id: "3", attributes: { ... } }
+  } catch (_) {
+    return null;
   }
+}
 
   async function patchUser(id, attrs, csrf) {
     var headers = { 'Accept': 'application/vnd.api+json', 'Content-Type': 'application/vnd.api+json' };
@@ -68,9 +87,14 @@
 
   async function onEditClick() {
     var slug = currentProfileSlug(); if (!slug) return;
-    var user = await fetchUserBySlug(slug); if (!user || !user.data) return;
+    const user = await fetchUserBySlug(slug);
+    if (!user) {
+        alert('Could not load user details for this profile.');
+        return;
+    }
 
-    var attrs = user.data.attributes || {};
+    const id = user.id;                 // numeric ID string e.g. "3"
+    const attrs = user.attributes || {}; // direct attributes object
     var title = window.prompt('Profile title (max 250 characters):', (attrs.title || '').toString());
     if (title === null) return;
     title = (title || '').trim();
